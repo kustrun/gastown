@@ -156,6 +156,7 @@ type AddRigOptions struct {
 	Name        string // Rig name (directory name)
 	GitURL      string // Repository URL
 	BeadsPrefix string // Beads issue prefix (defaults to derived from name)
+	Branch      string // Branch to clone (defaults to repo's default branch)
 }
 
 // AddRig creates a new rig as a container with clones for each agent.
@@ -226,13 +227,24 @@ func (m *Manager) AddRig(opts AddRigOptions) (*Rig, error) {
 	// This allows refinery to see polecat branches without pushing to remote.
 	// Mayor remains a separate clone (doesn't need branch visibility).
 	bareRepoPath := filepath.Join(rigPath, ".repo.git")
-	if err := m.git.CloneBare(opts.GitURL, bareRepoPath); err != nil {
-		return nil, fmt.Errorf("creating bare repo: %w", err)
+	if opts.Branch != "" {
+		if err := m.git.CloneBareWithBranch(opts.GitURL, bareRepoPath, opts.Branch); err != nil {
+			return nil, fmt.Errorf("creating bare repo: %w", err)
+		}
+	} else {
+		if err := m.git.CloneBare(opts.GitURL, bareRepoPath); err != nil {
+			return nil, fmt.Errorf("creating bare repo: %w", err)
+		}
 	}
 	bareGit := git.NewGitWithDir(bareRepoPath, "")
 
-	// Detect default branch (main, master, etc.)
-	defaultBranch := bareGit.DefaultBranch()
+	// Determine default branch: use specified branch or detect from repo
+	var defaultBranch string
+	if opts.Branch != "" {
+		defaultBranch = opts.Branch
+	} else {
+		defaultBranch = bareGit.DefaultBranch()
+	}
 	rigConfig.DefaultBranch = defaultBranch
 	// Re-save config with default branch
 	if err := m.saveRigConfig(rigPath, rigConfig); err != nil {
@@ -246,8 +258,14 @@ func (m *Manager) AddRig(opts AddRigOptions) (*Rig, error) {
 	if err := os.MkdirAll(filepath.Dir(mayorRigPath), 0755); err != nil {
 		return nil, fmt.Errorf("creating mayor dir: %w", err)
 	}
-	if err := m.git.Clone(opts.GitURL, mayorRigPath); err != nil {
-		return nil, fmt.Errorf("cloning for mayor: %w", err)
+	if opts.Branch != "" {
+		if err := m.git.CloneWithBranch(opts.GitURL, mayorRigPath, opts.Branch); err != nil {
+			return nil, fmt.Errorf("cloning for mayor: %w", err)
+		}
+	} else {
+		if err := m.git.Clone(opts.GitURL, mayorRigPath); err != nil {
+			return nil, fmt.Errorf("cloning for mayor: %w", err)
+		}
 	}
 
 	// Check if source repo has .beads/ with its own prefix - if so, use that prefix.

@@ -99,6 +99,17 @@ func (g *Git) Clone(url, dest string) error {
 	return nil
 }
 
+// CloneWithBranch clones a repository to the destination, checking out a specific branch.
+func (g *Git) CloneWithBranch(url, dest, branch string) error {
+	cmd := exec.Command("git", "clone", "--branch", branch, url, dest)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return g.wrapError(err, stderr.String(), []string{"clone", "--branch", branch, url})
+	}
+	return nil
+}
+
 // CloneBare clones a repository as a bare repo (no working directory).
 // This is used for the shared repo architecture where all worktrees share a single git database.
 func (g *Git) CloneBare(url, dest string) error {
@@ -107,6 +118,18 @@ func (g *Git) CloneBare(url, dest string) error {
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return g.wrapError(err, stderr.String(), []string{"clone", "--bare", url})
+	}
+	return nil
+}
+
+// CloneBareWithBranch clones a repository as a bare repo with a specific branch.
+// The branch becomes the HEAD of the bare repo.
+func (g *Git) CloneBareWithBranch(url, dest, branch string) error {
+	cmd := exec.Command("git", "clone", "--bare", "--branch", branch, url, dest)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return g.wrapError(err, stderr.String(), []string{"clone", "--bare", "--branch", branch, url})
 	}
 	return nil
 }

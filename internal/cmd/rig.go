@@ -62,7 +62,8 @@ The command also:
 
 Example:
   gt rig add gastown https://github.com/steveyegge/gastown
-  gt rig add my-project git@github.com:user/repo.git --prefix mp`,
+  gt rig add my-project git@github.com:user/repo.git --prefix mp
+  gt rig add my-project git@github.com:user/repo.git --branch develop`,
 	Args: cobra.ExactArgs(2),
 	RunE: runRigAdd,
 }
@@ -251,6 +252,7 @@ Examples:
 // Flags
 var (
 	rigAddPrefix       string
+	rigAddBranch       string
 	rigResetHandoff    bool
 	rigResetMail       bool
 	rigResetStale      bool
@@ -279,6 +281,7 @@ func init() {
 	rigCmd.AddCommand(rigStopCmd)
 
 	rigAddCmd.Flags().StringVar(&rigAddPrefix, "prefix", "", "Beads issue prefix (default: derived from name)")
+	rigAddCmd.Flags().StringVar(&rigAddBranch, "branch", "", "Branch to clone (default: repo's default branch)")
 
 	rigResetCmd.Flags().BoolVar(&rigResetHandoff, "handoff", false, "Clear handoff content")
 	rigResetCmd.Flags().BoolVar(&rigResetMail, "mail", false, "Clear stale mail messages")
@@ -330,6 +333,9 @@ func runRigAdd(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Creating rig %s...\n", style.Bold.Render(name))
 	fmt.Printf("  Repository: %s\n", gitURL)
+	if rigAddBranch != "" {
+		fmt.Printf("  Branch: %s\n", rigAddBranch)
+	}
 
 	startTime := time.Now()
 
@@ -338,6 +344,7 @@ func runRigAdd(cmd *cobra.Command, args []string) error {
 		Name:        name,
 		GitURL:      gitURL,
 		BeadsPrefix: rigAddPrefix,
+		Branch:      rigAddBranch,
 	})
 	if err != nil {
 		return fmt.Errorf("adding rig: %w", err)
